@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "setpoint",
+  "description": "Target ball position. Origin (0,0) = plate center, x to the right, y up (camera view), units mm.",
+  "type": "object",
+  "properties": {
+    "x_mm": {
+      "type": "number",
+      "minimum": -200,
+      "maximum": 200,
+      "description": "Setpoint x mm. Limit +-200 mm is a PLACEHOLDER."
+    },
+    "y_mm": {
+      "type": "number",
+      "minimum": -200,
+      "maximum": 200,
+      "description": "Setpoint y mm. Limit +-200 mm is a PLACEHOLDER."
+    }
+  },
+  "required": [
+    "x_mm",
+    "y_mm"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ball_position",
+  "description": "Ball position on plate. Origin (0,0) = plate center, x to the right, y up (camera view), units mm. valid=false when ball not detected.",
+  "type": "object",
+  "properties": {
+    "t_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Timestamp, milliseconds."
+    },
+    "x_mm": {
+      "type": "number",
+      "minimum": -200,
+      "maximum": 200,
+      "description": "Ball x mm. Limit +-200 mm is a PLACEHOLDER."
+    },
+    "y_mm": {
+      "type": "number",
+      "minimum": -200,
+      "maximum": 200,
+      "description": "Ball y mm. Limit +-200 mm is a PLACEHOLDER."
+    },
+    "valid": {
+      "type": "boolean",
+      "description": "False if ball not detected."
+    }
+  },
+  "required": [
+    "t_ms",
+    "x_mm",
+    "y_mm",
+    "valid"
+  ],
+  "additionalProperties": false
+}
