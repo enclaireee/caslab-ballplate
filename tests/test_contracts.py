@@ -42,3 +42,9 @@ def test_invalid(name, msg):
 def test_unknown_name():
     with pytest.raises(ContractError, match="unknown contract"):
         validate("nope", {})
+
+
+@pytest.mark.parametrize("bad", [float("nan"), float("inf"), float("-inf")])
+def test_non_finite_rejected(bad):
+    with pytest.raises(ContractError, match="non-finite"):
+        validate("setpoint", {"x_mm": bad, "y_mm": 0})

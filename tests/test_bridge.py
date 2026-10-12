@@ -74,3 +74,8 @@ def test_rx_port_lost_stops_cleanly():
     t = run(bridge.rx_loop, FakePort(fail_read=True), queue.Queue(), stop, {}, msgs.append)
     t.join(timeout=2)
     assert not t.is_alive() and stop.is_set() and "terputus" in msgs[0]
+
+
+def test_encode_rejects_nan_setpoint():
+    with pytest.raises(ContractError):
+        bridge.encode("setpoint", {"x_mm": float("nan"), "y_mm": 0})

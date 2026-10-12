@@ -24,7 +24,7 @@ def encode(msg, data):
     if msg not in TX_MSGS:
         raise ContractError(f"msg '{msg}' tidak dikirim laptop, harus salah satu {TX_MSGS}")
     validate(msg, data)
-    return (json.dumps({"msg": msg, "data": data}) + "\n").encode()
+    return (json.dumps({"msg": msg, "data": data}, allow_nan=False) + "\n").encode()
 
 
 def decode_telemetry(line):
