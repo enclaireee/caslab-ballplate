@@ -1,0 +1,174 @@
+@import "tailwindcss";
+
+/* Design idea: "the viewfinder".
+   You look through the camera that tracks the ball; the numbers are its
+   on-screen display. Dark, because a viewfinder is dark.
+   Amber always means "target" (setpoint, error, focus box). See DESIGN.md. */
+:root {
+  color-scheme: dark;
+  --bg: #0a0b0b;     /* page */
+  --panel: #121414;  /* viewfinder, charts, terminals */
+  --ink: #ecede8;    /* text, ball, ball line */
+  --muted: #8c918b;  /* labels */
+  --line: #232726;   /* thin lines, grid */
+  --focus: #ffb020;  /* amber: setpoint, error, focus box, active tab */
+  --rec: #ff3b30;    /* REC dot and error messages only */
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1); /* the one ease used everywhere */
+}
+
+/* Make the tokens usable as Tailwind classes (bg-panel, text-focus, ...). */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-focus: var(--focus);
+  --color-rec: var(--rec);
+  --font-sans: var(--font-barlow);
+  --font-cond: var(--font-barlow-cond);
+  --font-mono: var(--font-martian);
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-barlow), sans-serif;
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+::selection {
+  background: var(--focus);
+  color: var(--bg);
+}
+
+/* Numbers line up in columns (all mono text uses this). */
+.font-mono {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Huge page title, condensed and uppercase like the markings on a camera body. */
+.display {
+  font-family: var(--font-barlow-cond), sans-serif;
+  font-size: clamp(3.5rem, 15vw, 9rem);
+  font-weight: 700;
+  line-height: 0.82;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+}
+
+/* Small uppercase label, e.g. "X POSITION". */
+.label {
+  font-family: var(--font-barlow-cond), sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Square button with a thin border; turns amber on hover. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--muted);
+  font-family: var(--font-barlow-cond), sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transition: border-color 150ms, color 150ms;
+}
+.btn:hover {
+  border-color: var(--focus);
+  color: var(--focus);
+}
+.btn:active {
+  transform: translateY(1px);
+}
+
+/* Visible keyboard focus everywhere. */
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+
+/* The four corner brackets of a viewfinder, drawn on a layer on top of a box.
+   Each bracket = two 2px gradients (one across, one down) in one corner.
+   Put .brackets on a box that is "relative". */
+.brackets::after {
+  --b: linear-gradient(var(--ink), var(--ink));
+  content: "";
+  position: absolute;
+  inset: 12px;
+  pointer-events: none;
+  background:
+    var(--b) top left / 24px 2px no-repeat,
+    var(--b) top left / 2px 24px no-repeat,
+    var(--b) top right / 24px 2px no-repeat,
+    var(--b) top right / 2px 24px no-repeat,
+    var(--b) bottom left / 24px 2px no-repeat,
+    var(--b) bottom left / 2px 24px no-repeat,
+    var(--b) bottom right / 24px 2px no-repeat,
+    var(--b) bottom right / 2px 24px no-repeat;
+  /* motion verb "lock on": the brackets pull in once when the page opens */
+  animation: lock-on 500ms var(--ease) both;
+}
+@keyframes lock-on {
+  from {
+    transform: scale(1.06);
+    opacity: 0;
+  }
+}
+
+/* The REC dot blinks: on for half a second, off for half a second. */
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+.blink {
+  animation: blink 1s steps(1) infinite;
+}
+
+/* Soft light around bright lines (the ball and the chart lines). */
+.glow {
+  filter: drop-shadow(0 0 3px rgb(236 237 232 / 0.45));
+}
+
+/* Setup page: a ball rolls down the "what runs where" line.
+   translateY(100%) = the height of the .flow box, so it ends on the last dot. */
+@keyframes flow {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  15%,
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+.flow {
+  animation: flow 3.2s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+/* People who turn off animations in their OS settings get none here,
+   and everything shows right away. */
+@media (prefers-reduced-motion: reduce) {
+  .brackets::after,
+  .blink {
+    animation: none;
+  }
+  .flow {
+    display: none;
+  }
+}
