@@ -83,8 +83,8 @@ export default function RunsPage() {
           </ol>
           {runs.length === 0 && !error && (
             <p className="py-4 text-sm text-muted">
-              No runs yet. Start <code className="font-mono text-ink">.venv/bin/python esp/datalog.py</code> and let it
-              run for a few seconds.
+              No runs yet. Start <code className="font-mono text-ink">.venv/bin/python esp/datalog.py run1 --mock</code>{" "}
+              and let it run for a few seconds.
             </p>
           )}
         </nav>

@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 // What runs where, from the hardware to your screen.
 const flow = [
-  { name: "ESP32", detail: "PID + servos, USB serial (mock for now)" },
+  { name: "ESP32", detail: "PID + servos, USB serial at 115200 baud" },
   { name: "datalog.py", detail: "Terminal 1, saves CSV, port 8000" },
   { name: "dashboard", detail: "Terminal 2, port 3000" },
   { name: "browser", detail: "localhost:3000, this page" },
@@ -26,6 +26,15 @@ const problems = [
       <>
         An old datalog.py still holds port 8000. Find its PID with <Code>lsof -i :8000</Code>, then stop it with{" "}
         <Code>kill PID</Code>.
+      </>
+    ),
+  },
+  {
+    problem: "No ESP32 found",
+    fix: (
+      <>
+        The board is not plugged in, or another program holds the port. Close the Arduino Serial Monitor, then try
+        again. If it still fails, pass the port: <Code>--port /dev/cu.usbserial-0001</Code>.
       </>
     ),
   },
@@ -143,7 +152,8 @@ export default function HowToRunPage() {
               note={
                 <>
                   Saves every sample to <Code>data_logging/runs/run1.csv</Code>. Leave out the name and it uses the
-                  date and time.
+                  date and time. No hardware yet? Add <Code>--mock</Code> after the name: the fake ESP32 runs the same
+                  PID on a simulated ball.
                 </>
               }
             />
@@ -171,22 +181,24 @@ export default function HowToRunPage() {
             />
           </Step>
 
-          <Step n="04" title="Switch to the real ESP32" when="later" last>
+          <Step n="04" title="Flash the ESP32" when="once per board" last>
             <p className="text-muted">
-              When <Code>esp/esp_usb.py</Code> exists, change one line at the top of <Code>esp/datalog.py</Code>.
-              Nothing else changes.
+              Arduino IDE: board <Code>ESP32 Dev Module</Code>, install the <Code>ESP32Servo</Code> library (Library
+              Manager), then open <Code>esp/esp.ino</Code>. The other three files (<Code>pid.ino</Code>,{" "}
+              <Code>plate.ino</Code>, <Code>pid.h</Code>) open as tabs next to it, so keep them in the same folder.
+              Press Upload.
             </p>
-            <figure className="overflow-hidden border border-line bg-panel font-mono text-sm">
-              <figcaption className="border-b border-line px-4 py-2.5 text-xs text-muted">esp/datalog.py</figcaption>
-              <pre className="overflow-x-auto py-1.5">
-                <span className="block px-4 py-1 text-muted">
-                  <span className="text-rec select-none">- </span>from mock import Esp
-                </span>
-                <span className="block bg-focus/10 px-4 py-1">
-                  <span className="text-focus select-none">+ </span>from esp_usb import Esp
-                </span>
-              </pre>
-            </figure>
+            <Terminal
+              title="Terminal 1 · real rig"
+              commands={[".venv/bin/python esp/datalog.py run1"]}
+              note={
+                <>
+                  Without <Code>--mock</Code> the logger opens the camera and sends <Code>pos x y</Code> to the board
+                  once per frame. The USB port is found automatically; add <Code>--port /dev/cu.usbserial-0001</Code>{" "}
+                  if it picks the wrong one. Type <Code>sp 50 0</Code> in this terminal to move the setpoint.
+                </>
+              }
+            />
           </Step>
         </ol>
       </div>

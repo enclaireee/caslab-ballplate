@@ -1,24 +1,32 @@
-# datalog.py - read data lines from the ESP32, show them, save them to a CSV file,
-# and give the data to the website (Next.js dashboard).
+# datalog.py - the one program that talks to the ESP32.
 #
-# Run:  python esp/datalog.py            -> saves to data_logging/runs/run_<date>_<time>.csv
-#       python esp/datalog.py test1.csv  -> saves to data_logging/runs/test1.csv
+# It runs the camera, sends the ball position to the ESP32, prints the reply,
+# saves every data line to a CSV file, and hands the data to the website.
+# Only one program can open the USB port, which is why all of this lives here.
+#
+# Run:  .venv/bin/python esp/datalog.py run1            real ESP32 + camera
+#       .venv/bin/python esp/datalog.py run1 --mock     fake ESP32, no hardware
+#       .venv/bin/python esp/datalog.py                name from the date and time
 # Stop: Ctrl+C
 #
 # Website addresses (only this laptop can open them):
 #   http://127.0.0.1:8000/stream          live data, one JSON sample per line (SSE)
 #   http://127.0.0.1:8000/runs            list of saved CSV files
-#   http://127.0.0.1:8000/runs/test1.csv  one saved CSV file
+#   http://127.0.0.1:8000/runs/run1.csv   one saved CSV file
 
+import argparse
 import json
-import socketserver
+import select
 import sys
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-# Mock ESP
-from mock import Esp
+
+# The camera code lives in vision/, and mock.py / esp_usb.py live next to this
+# file. Import them by their plain names, whatever folder you run this from.
+sys.path.insert(0, str(Path(__file__).parent.parent / "vision"))
+sys.path.insert(0, str(Path(__file__).parent))
 
 HEADER = "t_ms,x_mm,y_mm,sp_x_mm,sp_y_mm,u_x_deg,u_y_deg"
 COLUMNS = HEADER.split(",")
@@ -33,20 +41,8 @@ lines = []
 
 
 def isDataLine(line):
-    """True if the line is a data line. Lines starting with # are just messages."""
-    if line == "" or line.startswith("#"):
-        return False
-    # A data line has exactly 7 numbers. Anything else is a broken line (e.g. cut off
-    # while the ESP32 was starting), so we don't save it.
-    parts = line.split(",")
-    if len(parts) != 7:
-        return False
-    try:
-        for part in parts:
-            float(part)
-    except ValueError:
-        return False
-    return True
+    """True for a data line. Lines starting with # are messages, not data."""
+    return line != "" and not line.startswith("#") and len(line.split(",")) == 7
 
 
 def toSample(line):
@@ -62,7 +58,6 @@ def listRuns():
 
 class Website(BaseHTTPRequestHandler):
     """Answers the website's requests. Python runs do_GET for every GET request."""
-
     def do_GET(self):
         if self.path == "/stream":
             self.sendStream()
@@ -112,16 +107,9 @@ class Website(BaseHTTPRequestHandler):
         pass  # don't print every web request, the data lines are enough
 
 
-class Server(ThreadingHTTPServer):
-    def server_bind(self):
-        # The normal server_bind also looks up this laptop's network name, which takes
-        # ~35 s on some Macs. We don't need the name, so only do the basic part.
-        socketserver.TCPServer.server_bind(self)
-
-
 def startWebsiteServer():
     # 127.0.0.1 = only this laptop can connect, not other people on the wifi
-    server = Server(("127.0.0.1", PORT), Website)
+    server = ThreadingHTTPServer(("127.0.0.1", PORT), Website)
     # The server waits for requests forever, so it gets its own thread (runs side by side
     # with the main loop). daemon=True: it stops by itself when the main program stops.
     threading.Thread(target=server.serve_forever, daemon=True).start()
@@ -129,25 +117,59 @@ def startWebsiteServer():
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Save a ball-and-plate run to a CSV file.")
+    parser.add_argument("name", nargs="?", help="file name, e.g. run1 (default: date and time)")
+    parser.add_argument("--mock", action="store_true", help="use the fake ESP32 (no hardware)")
+    parser.add_argument("--port", help="USB port of the ESP32 (default: find it)")
+    args = parser.parse_args()
+
     # File name: the one you typed, or one made from the date and time,
     # so a new run never overwrites an old one.
-    if len(sys.argv) > 1:
-        name = sys.argv[1]
-    else:
-        name = time.strftime("run_%Y%m%d_%H%M%S.csv")
+    name = args.name or time.strftime("run_%Y%m%d_%H%M%S.csv")
     if not name.endswith(".csv"):
         name = name + ".csv"
     RUNS_FOLDER.mkdir(parents=True, exist_ok=True)  # make the folder if it's not there yet
     filename = RUNS_FOLDER / name
 
+    # Two ways to get data lines, same three functions afterwards:
+    #   --mock    the fake ESP32 makes its own ball, no camera, no hardware
+    #   default   the camera finds the ball and the real ESP32 runs the PID
+    camera = None
+    if args.mock:
+        from mock import Esp
+        esp = Esp()
+        print("Using the fake ESP32 (no hardware needed).")
+    else:
+        import vision
+        from esp_usb import Esp
+        vision.load_settings()
+        camera = vision.openCamera()
+        esp = Esp(port=args.port)
+        print("Using the real ESP32 and the camera.")
+
     startWebsiteServer()
-    esp = Esp()
     csv_file = open(filename, "w")
     csv_file.write(HEADER + "\n")
     print("Saving to", filename, "- press Ctrl+C to stop")
 
     try:
         while True:
+            # A command typed here goes to the ESP32: sp 50 0, pid 0.4 0 0.15
+            if select.select([sys.stdin], [], [], 0)[0]:
+                command = sys.stdin.readline().strip()
+                if command:
+                    esp.sendLine(command)
+
+            if camera is not None:
+                # 1. Where is the ball? Tell the ESP32, so it can do one control step.
+                ok, frame = camera.read()
+                ball = vision.findBallMm(frame) if ok else None
+                if ball is None:
+                    esp.sendLine("pos none")
+                else:
+                    esp.sendLine(f"pos {ball[0]:.1f} {ball[1]:.1f}")
+
+            # 2. Read the answer (one data line, or a # message).
             line = esp.readLine()
             if isDataLine(line):
                 csv_file.write(line + "\n")
@@ -158,6 +180,8 @@ def main():
         print("Stopped. Data saved in", filename)
     finally:
         csv_file.close()
+        if camera is not None:
+            camera.release()
 
 
 if __name__ == "__main__":

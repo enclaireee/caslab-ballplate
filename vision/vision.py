@@ -65,6 +65,18 @@ def findBall(mask):
     return x_px, y_px
 
 
+def findBallMm(frame):
+    """One camera picture -> ball position (x_mm, y_mm), or None when the ball is not visible.
+
+    This is the function datalog.py calls once per frame.
+    """
+    mask = make_mask(frame, THRESHOLD)
+    ball = findBall(mask)
+    if ball is None:
+        return None
+    return toMm(ball[0], ball[1])
+
+
 def toMm(x_px, y_px):
     """Pixels -> mm. (0, 0) = plate centre, x goes right, y goes up."""
     # ponytail: straight-line scaling, assumes the camera looks straight down.
@@ -95,6 +107,16 @@ def save_settings(threshold):
     print("saved", SETTINGS_FILE)
 
 
+def openCamera():
+    """Open the webcam and ask for 640x480."""
+    cam = cv2.VideoCapture(CAMERA)
+    cam.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+    cam.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+    # BUFFERSIZE 1: keep only 1 waiting picture, so we always get the newest one (less delay).
+    cam.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+    return cam
+
+
 def select_plate(frame):
     """Let the user drag a box over the plate with the mouse."""
     global PLATE_LEFT, PLATE_RIGHT, PLATE_TOP, PLATE_BOTTOM
@@ -110,13 +132,8 @@ def select_plate(frame):
 def main():
     load_settings()
 
-    # VideoCapture: open the webcam with this number.
-    cam = cv2.VideoCapture(CAMERA)
-    # set: ask the camera for a picture size of 640x480 pixels.
-    cam.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-    cam.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-    # BUFFERSIZE 1: keep only 1 waiting picture, so we always get the newest one (less delay).
-    cam.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+    # VideoCapture: open the webcam with this number, 640x480 pixels.
+    cam = openCamera()
 
     # namedWindow: create an empty window with this name (imshow fills it later).
     cv2.namedWindow("camera")
