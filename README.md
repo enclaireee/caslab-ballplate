@@ -109,11 +109,12 @@ ratio, direction, PID gains) are set for the standard rig. Check them on the ben
 vision/vision.py     ball in the picture -> x, y mm
 esp/esp.ino          ESP32: settings, setup, loop, serial commands
 esp/pid.ino          PID maths for one axis
-esp/plate.ino        tilt angle -> servo angle
+esp/plate.ino        tilt angle -> servo pulse
 esp/pid.h            the Pid type
 esp/datalog.py       laptop: camera -> ESP32, save CSV, serve the dashboard
 esp/esp_usb.py       real ESP32 over USB
 esp/mock.py          fake ESP32, no hardware needed
+esp/test_datalog.py  check that datalog.py stays in step with the ESP32
 data_logging/runs/   one CSV per run
 data_logging/dashboard/  Next.js dashboard (Live, Runs, Setup)
 ```

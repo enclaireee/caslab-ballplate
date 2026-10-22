@@ -4,7 +4,7 @@ from pathlib import Path
 
 import cv2
 
-CAMERA = 0
+CAMERA = 1
 THRESHOLD = 200
 MIN_AREA = 30
 

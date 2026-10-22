@@ -40,7 +40,7 @@ vision/              find the ball (Python + OpenCV)
 esp/                 everything that talks to the ESP32
   esp.ino            ESP32 code: setup(), loop(), settings at the top, serial commands
   pid.ino            PID math for one axis
-  plate.ino          tilt angle -> servo angle
+  plate.ino          tilt angle -> servo pulse
   pid.h              the Pid type the two files share
   datalog.py         laptop: camera -> pos -> ESP32, save CSV, serve the dashboard
   esp_usb.py         real ESP32 over USB: sendLine() + readLine()
@@ -67,7 +67,7 @@ The camera decides the pace. Every time a `pos` line arrives from the laptop (on
 3. `u = kp*error + ki*integral - kd*speed`, limited to ±15°.
    - `speed` is the change in position divided by `dt` (not the change in error), so a setpoint jump doesn't kick the plate.
    - The integral stops growing while `u` is at the limit (anti-windup).
-4. Convert tilt to servo angle: `center + direction * ratio * u`, limited to a safe range.
+4. Convert tilt to servo angle: `center + direction * ratio * u`, limited to a safe range, then send it as a pulse in microseconds (about 0.1 servo degree per step, not whole degrees).
 5. Print one data line.
 
 Running PID only when a new position arrives (instead of on a fixed 100 Hz timer) means the derivative never sees the same position twice, so it doesn't spike.

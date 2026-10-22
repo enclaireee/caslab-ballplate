@@ -1,7 +1,7 @@
 // esp.ino - Ball and Plate, ESP32 side.
 //
 // One "pos x y" line from the laptop = one control step:
-//   PID per axis -> plate tilt -> servo angle -> one data line back.
+//   PID per axis -> plate tilt -> servo pulse -> one data line back.
 //
 // Commands (115200 baud, one line each):
 //   pos 12.5 -3.0    ball position in mm, every camera frame
@@ -9,7 +9,7 @@
 //   sp 50 0          set the setpoint in mm
 //   pid 0.4 0 0.15   set kp ki kd for both axes
 //
-// Files: esp.ino (settings + loop), pid.ino (PID maths), plate.ino (servo angle),
+// Files: esp.ino (settings + loop), pid.ino (PID maths), plate.ino (servo pulse),
 // pid.h (the Pid type). Needs the ESP32Servo library from Library Manager.
 
 #include <ESP32Servo.h>
@@ -19,6 +19,11 @@
 
 const int SERVO_X_PIN = 18;  // which pin each servo signal wire is on
 const int SERVO_Y_PIN = 19;
+
+// Pulse width (microseconds) for 0 and 180 degrees of servo. These are the
+// ESP32Servo defaults, so 90 degrees gives the same pulse servo.write(90) did.
+const int PULSE_0_DEG = 544;
+const int PULSE_180_DEG = 2400;
 
 // +1 = positive tilt pushes the ball towards +x / +y. Use -1 if it goes the wrong way.
 const int SERVO_DIR_X = 1;
@@ -48,8 +53,8 @@ void setup() {
   pidBegin(pidX, KP, KI, KD);
   pidBegin(pidY, KP, KI, KD);
 
-  servoX.attach(SERVO_X_PIN);
-  servoY.attach(SERVO_Y_PIN);
+  servoX.attach(SERVO_X_PIN, PULSE_0_DEG, PULSE_180_DEG);
+  servoY.attach(SERVO_Y_PIN, PULSE_0_DEG, PULSE_180_DEG);
   hold();
 
   Serial.println("# ball and plate ready");
@@ -102,8 +107,8 @@ void controlStep(float x, float y) {
   float ux = pidStep(pidX, spX, x, dt);
   float uy = pidStep(pidY, spY, y, dt);
 
-  servoX.write(tiltToServo(ux, SERVO_DIR_X));
-  servoY.write(tiltToServo(uy, SERVO_DIR_Y));
+  servoX.writeMicroseconds(tiltToPulse(ux, SERVO_DIR_X));
+  servoY.writeMicroseconds(tiltToPulse(uy, SERVO_DIR_Y));
 
   // t_ms,x_mm,y_mm,sp_x_mm,sp_y_mm,u_x_deg,u_y_deg
   Serial.printf("%lu,%.1f,%.1f,%.1f,%.1f,%.2f,%.2f\n", now, x, y, spX, spY, ux, uy);
@@ -111,8 +116,8 @@ void controlStep(float x, float y) {
 
 // Plate flat and integrators cleared. Used at boot, on "pos none" and on timeout.
 void hold() {
-  servoX.write(tiltToServo(0, SERVO_DIR_X));
-  servoY.write(tiltToServo(0, SERVO_DIR_Y));
+  servoX.writeMicroseconds(tiltToPulse(0, SERVO_DIR_X));
+  servoY.writeMicroseconds(tiltToPulse(0, SERVO_DIR_Y));
   resetIntegral(pidX);
   resetIntegral(pidY);
 }

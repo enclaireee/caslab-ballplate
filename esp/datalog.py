@@ -51,6 +51,17 @@ def toSample(line):
     return dict(zip(COLUMNS, values))
 
 
+def readReply(esp):
+    """Read until the answer to our pos line: a data line or "# no ball".
+    Other messages (like "# timeout") are printed and skipped, so we never fall
+    one line behind. "" means the ESP32 did not answer, so stop waiting."""
+    while True:
+        line = esp.readLine()
+        if isDataLine(line) or line == "# no ball" or line == "":
+            return line
+        print(line)
+
+
 def listRuns():
     """Names of all saved CSV files, oldest first."""
     return sorted(file.name for file in RUNS_FOLDER.glob("*.csv"))
@@ -144,6 +155,8 @@ def main():
         from esp_usb import Esp
         vision.load_settings()
         camera = vision.openCamera()
+        if not camera.isOpened():
+            sys.exit("Cannot open the camera. Check CAMERA in vision/vision.py and the camera permission.")
         esp = Esp(port=args.port)
         print("Using the real ESP32 and the camera.")
 
@@ -169,8 +182,8 @@ def main():
                 else:
                     esp.sendLine(f"pos {ball[0]:.1f} {ball[1]:.1f}")
 
-            # 2. Read the answer (one data line, or a # message).
-            line = esp.readLine()
+            # 2. Read the answer (one data line, or "# no ball").
+            line = readReply(esp)
             if isDataLine(line):
                 csv_file.write(line + "\n")
                 csv_file.flush()  # write to disk now, so nothing is lost if it crashes
