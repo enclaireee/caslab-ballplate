@@ -100,7 +100,8 @@ ratio, direction, PID gains) are set for the standard rig. Check them on the ben
 | Servo direction | `SERVO_DIR_X`, `SERVO_DIR_Y` | tilt +5°: the ball must roll toward +x / +y |
 | Servo to plate ratio | `SERVO_RATIO` | measure the plate tilt for a known servo change |
 | PID gains | `KP`, `KI`, `KD` | tune with `pid kp ki kd` over serial |
-| Camera number | `CAMERA` in `vision/vision.py` | 0 = built-in webcam, 1 = USB webcam |
+| Camera number | `CAMERA` in `vision/vision.py` | 0 = built-in webcam, 1 = USB webcam or iPhone |
+| Plate size | `PLATE_W_MM`, `PLATE_H_MM` in `vision/vision.py` | measure the plate inside the box with a ruler |
 | Plate box + threshold | `vision/settings.json` | run `vision.py`, `p` and the slider, then `q` |
 
 ## Files

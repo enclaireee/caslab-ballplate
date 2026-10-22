@@ -16,6 +16,8 @@ PLATE_RIGHT = 520
 PLATE_TOP = 40
 PLATE_BOTTOM = 440
 
+# Real size of the plate inside the box, in mm. Not final yet: measure it with a
+# ruler once the plate is built, or every mm value (and the PID gains) is off.
 PLATE_W_MM = 300
 PLATE_H_MM = 300
 
