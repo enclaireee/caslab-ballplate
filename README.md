@@ -96,7 +96,7 @@ ratio, direction, PID gains) are set for the standard rig. Check them on the ben
 | Setting | Where | How to check |
 |---|---|---|
 | Servo pins | `SERVO_X_PIN`, `SERVO_Y_PIN` | match your wiring |
-| Servo centre | `SERVO_CENTER` | adjust until the plate is level (phone level app) |
+| Servo centre | `SERVO_CENTER_X`, `SERVO_CENTER_Y` | adjust each until its axis is level (phone level app) |
 | Servo direction | `SERVO_DIR_X`, `SERVO_DIR_Y` | tilt +5°: the ball must roll toward +x / +y |
 | Servo to plate ratio | `SERVO_RATIO` | measure the plate tilt for a known servo change |
 | PID gains | `KP`, `KI`, `KD` | tune with `pid kp ki kd` over serial |

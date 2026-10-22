@@ -154,7 +154,7 @@ Use the project's `.venv` Python (`.venv/bin/python ...`). Python libraries: `op
 | Plate size (mm) | ruler; change `PLATE_W_MM` / `PLATE_H_MM` in `vision.py` |
 | ESP32 USB port name | found automatically; pass `--port` if the wrong one is picked (Arduino IDE → Tools → Port) |
 | Servo pins (`SERVO_X_PIN`, `SERVO_Y_PIN`) | from your friend's wiring |
-| Servo center angles (`SERVO_CENTER`) | adjust until the plate is level (phone level app) |
+| Servo center angles (`SERVO_CENTER_X`, `SERVO_CENTER_Y`) | adjust each until its axis is level (phone level app) |
 | Servo direction (`SERVO_DIR_X`, `SERVO_DIR_Y`) | tilt +5°, the ball should roll toward +x / +y |
 | Servo-to-plate ratio (`SERVO_RATIO`) | measure plate tilt for a known servo change |
 

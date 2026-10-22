@@ -17,13 +17,17 @@
 
 // ---------- Settings ----------
 
-const int SERVO_X_PIN = 18;  // which pin each servo signal wire is on
+const int SERVO_X_PIN = 18;
 const int SERVO_Y_PIN = 19;
 
 // Pulse width (microseconds) for 0 and 180 degrees of servo. These are the
 // ESP32Servo defaults, so 90 degrees gives the same pulse servo.write(90) did.
 const int PULSE_0_DEG = 544;
 const int PULSE_180_DEG = 2400;
+
+// Servo angle that makes the plate level, per axis. Decimals are fine, e.g. 91.5.
+const float SERVO_CENTER_X = 90.0;
+const float SERVO_CENTER_Y = 90.0;
 
 // +1 = positive tilt pushes the ball towards +x / +y. Use -1 if it goes the wrong way.
 const int SERVO_DIR_X = 1;
@@ -107,8 +111,8 @@ void controlStep(float x, float y) {
   float ux = pidStep(pidX, spX, x, dt);
   float uy = pidStep(pidY, spY, y, dt);
 
-  servoX.writeMicroseconds(tiltToPulse(ux, SERVO_DIR_X));
-  servoY.writeMicroseconds(tiltToPulse(uy, SERVO_DIR_Y));
+  servoX.writeMicroseconds(tiltToPulse(ux, SERVO_CENTER_X, SERVO_DIR_X));
+  servoY.writeMicroseconds(tiltToPulse(uy, SERVO_CENTER_Y, SERVO_DIR_Y));
 
   // t_ms,x_mm,y_mm,sp_x_mm,sp_y_mm,u_x_deg,u_y_deg
   Serial.printf("%lu,%.1f,%.1f,%.1f,%.1f,%.2f,%.2f\n", now, x, y, spX, spY, ux, uy);
@@ -116,8 +120,8 @@ void controlStep(float x, float y) {
 
 // Plate flat and integrators cleared. Used at boot, on "pos none" and on timeout.
 void hold() {
-  servoX.writeMicroseconds(tiltToPulse(0, SERVO_DIR_X));
-  servoY.writeMicroseconds(tiltToPulse(0, SERVO_DIR_Y));
+  servoX.writeMicroseconds(tiltToPulse(0, SERVO_CENTER_X, SERVO_DIR_X));
+  servoY.writeMicroseconds(tiltToPulse(0, SERVO_CENTER_Y, SERVO_DIR_Y));
   resetIntegral(pidX);
   resetIntegral(pidY);
 }
