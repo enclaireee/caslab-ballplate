@@ -6,7 +6,6 @@
 // Commands (115200 baud, one line each):
 //   pos 12.5 -3.0    ball position in mm, every camera frame
 //   pos none         the ball is not visible
-//   sp 50 0          set the setpoint in mm
 //   pid 0.074 0 0.025   set kp ki kd for both axes
 //
 // Files: esp.ino (settings + loop), pid.ino (PID maths), plate.ino (servo pulse),
@@ -31,15 +30,17 @@ const int PULSE_MAX = 1950;
 // Microseconds of pulse per degree of plate tilt. Measure yours: send a pulse
 // 100 us above the centre and read the plate tilt with a phone level app,
 // then PULSE_PER_DEG = 100 / tilt.
-const float PULSE_PER_DEG = 20.6;
+// ponytail: 100 is a TEST value (the logs showed ~5x too little tilt at 20.6).
+// Replace it with the measured number.
+const float PULSE_PER_DEG = 100;
 
 // +1 = positive tilt pushes the ball towards +x / +y. Use -1 if it goes the wrong way.
-const int SERVO_DIR_X = 1;
+const int SERVO_DIR_X = -1;
 const int SERVO_DIR_Y = 1;
 
-float KP = 0.074;  // degrees of tilt per mm of error
-float KI = 0.0;    // degrees per (mm * second)
-float KD = 0.025;  // degrees per (mm/s) of ball speed
+float KP = 0.15;  // degrees of tilt per mm of error
+float KI = 0.05;    // degrees per (mm * second)
+float KD = 0.06;  // degrees per (mm/s) of ball speed
 
 const unsigned long POS_TIMEOUT_MS = 200;  // no pos for this long -> plate flat
 
@@ -48,8 +49,9 @@ Servo servoY;
 Pid pidX;
 Pid pidY;
 
-float spX = 0.0;
-float spY = 0.0;
+// Setpoint locked to the plate centre (no sp command).
+const float spX = 0.0;
+const float spY = 0.0;
 
 bool havePos = false;
 unsigned long lastPosMs = 0;
@@ -89,9 +91,6 @@ void handleCommand(String line) {
     havePos = false;
     hold();
     Serial.println("# no ball");
-  } else if (sscanf(line.c_str(), "sp %f %f", &a, &b) == 2) {
-    spX = a;
-    spY = b;
   } else if (sscanf(line.c_str(), "pid %f %f %f", &a, &b, &c) == 3) {
     KP = a;
     KI = b;

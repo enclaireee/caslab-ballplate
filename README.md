@@ -92,9 +92,9 @@ Wiring: servo X signal → GPIO 2, servo Y signal → GPIO 4, servos on their ow
 5 V supply, grounds joined with the ESP32.
 
 Servo test (before the real sketch): open `esp/esptest/esptest.ino` and upload it.
-No Serial Monitor needed: the plate sits flat for 2 s, then both servos move in
-smooth sine waves through `PULSE_MIN`..`PULSE_MAX` (X every 4 s, Y every 5 s, so the
-plate tilts every way) until you unplug the ESP32 or upload `esp.ino`.
+No Serial Monitor needed: the plate sits flat for 2 s, then glides to the extreme
+of each of the 8 directions (`PULSE_MIN`/`PULSE_MAX` per axis), back to flat in
+between, holding each for 1 s, until you unplug the ESP32 or upload `esp.ino`.
 It never goes outside `PULSE_MIN`..`PULSE_MAX`.
 
 The settings at the top of `esp/esp.ino` (pins, servo pulses, direction, PID gains) are set for the standard rig. Check them on the bench:
@@ -119,7 +119,7 @@ esp/esp.ino          ESP32: settings, setup, loop, serial commands
 esp/pid.ino          PID maths for one axis
 esp/plate.ino        tilt angle -> servo pulse
 esp/pid.h            the Pid type
-esp/esptest/         servo test sketch: sweep or hold a pulse from the Serial Monitor
+esp/esptest/         servo test sketch: every extreme tilt, then flat, forever
 esp/datalog.py       laptop: camera -> ESP32, save CSV, serve the dashboard
 esp/esp_usb.py       real ESP32 over USB
 esp/mock.py          fake ESP32, no hardware needed
