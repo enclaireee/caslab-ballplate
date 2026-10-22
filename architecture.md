@@ -67,7 +67,7 @@ The camera decides the pace. Every time a `pos` line arrives from the laptop (on
 3. `u = kp*error + ki*integral - kd*speed`, limited to ±15°.
    - `speed` is the change in position divided by `dt` (not the change in error), so a setpoint jump doesn't kick the plate.
    - The integral stops growing while `u` is at the limit (anti-windup).
-4. Convert tilt to servo angle: `center + direction * ratio * u`, limited to a safe range, then send it as a pulse in microseconds (about 0.1 servo degree per step, not whole degrees).
+4. Convert tilt to a servo pulse: `center + direction * pulse_per_deg * u` microseconds, kept inside `PULSE_MIN`..`PULSE_MAX` (1 µs steps, about 0.05° of plate).
 5. Print one data line.
 
 Running PID only when a new position arrives (instead of on a fixed 100 Hz timer) means the derivative never sees the same position twice, so it doesn't spike.
@@ -82,7 +82,7 @@ Laptop to ESP32:
 pos 12.5 -3.0    ball position in mm (every camera frame)
 pos none         ball not found
 sp 50 0          set setpoint to x=50 mm, y=0 mm
-pid 0.4 0 0.15   set kp ki kd (both axes)
+pid 0.074 0 0.025   set kp ki kd (both axes)
 ```
 
 ESP32 to laptop, one CSV line per sample:
@@ -144,7 +144,7 @@ Every answer has `Access-Control-Allow-Origin: *`, because the browser blocks a 
 
 Use the project's `.venv` Python (`.venv/bin/python ...`). Python libraries: `opencv-python`, `pyserial`. Nothing else.
 
-## Bench calibration (values in `esp/esp.ino`, `esp/plate.ino` and `vision/settings.json`)
+## Bench calibration (values in `esp/esp.ino` and `vision/settings.json`)
 
 | Setting | How to find it |
 |---|---|
@@ -154,9 +154,10 @@ Use the project's `.venv` Python (`.venv/bin/python ...`). Python libraries: `op
 | Plate size (mm) | ruler; change `PLATE_W_MM` / `PLATE_H_MM` in `vision.py` |
 | ESP32 USB port name | found automatically; pass `--port` if the wrong one is picked (Arduino IDE → Tools → Port) |
 | Servo pins (`SERVO_X_PIN`, `SERVO_Y_PIN`) | from your friend's wiring |
-| Servo center angles (`SERVO_CENTER_X`, `SERVO_CENTER_Y`) | adjust each until its axis is level (phone level app) |
+| Servo level pulses (`PULSE_CENTER_X`, `PULSE_CENTER_Y`, now 1400 µs) | adjust each until its axis is level (phone level app) |
+| Servo pulse limits (`PULSE_MIN`, `PULSE_MAX`, now 1150 / 1950 µs) | just short of where the plate hits the frame |
 | Servo direction (`SERVO_DIR_X`, `SERVO_DIR_Y`) | tilt +5°, the ball should roll toward +x / +y |
-| Servo-to-plate ratio (`SERVO_RATIO`) | measure plate tilt for a known servo change |
+| Pulse per plate degree (`PULSE_PER_DEG`) | send centre + 100 µs, read the tilt, `100 / tilt` |
 
 ## Tuning
 

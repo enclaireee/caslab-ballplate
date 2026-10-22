@@ -151,9 +151,10 @@ def main():
         esp = Esp()
         print("Using the fake ESP32 (no hardware needed).")
     else:
+        import cv2
         import vision
         from esp_usb import Esp
-        vision.load_settings()
+        settings_time = 0  # when vision/settings.json was last loaded (0 = not yet)
         camera = vision.openCamera()
         if not camera.isOpened():
             sys.exit("Cannot open the camera. Check CAMERA in vision/vision.py and the camera permission.")
@@ -167,16 +168,28 @@ def main():
 
     try:
         while True:
-            # A command typed here goes to the ESP32: sp 50 0, pid 0.4 0 0.15
+            # A command typed here goes to the ESP32: sp 50 0, pid 0.074 0 0.025
             if select.select([sys.stdin], [], [], 0)[0]:
                 command = sys.stdin.readline().strip()
                 if command:
                     esp.sendLine(command)
 
             if camera is not None:
+                # vision.py saved new settings (p or q)? Use them from this frame on.
+                file = vision.SETTINGS_FILE
+                if file.exists() and file.stat().st_mtime != settings_time:
+                    settings_time = file.stat().st_mtime
+                    vision.load_settings()
+                    print("Plate box x", vision.PLATE_LEFT, "-", vision.PLATE_RIGHT,
+                          " y", vision.PLATE_TOP, "-", vision.PLATE_BOTTOM, " threshold", vision.THRESHOLD)
+
                 # 1. Where is the ball? Tell the ESP32, so it can do one control step.
                 ok, frame = camera.read()
                 ball = vision.findBallMm(frame) if ok else None
+                if ok:
+                    # Show what the controller sees. The green circle must be on the ball.
+                    cv2.imshow("datalog camera", frame)
+                    cv2.waitKey(1)  # gives the window 1 ms to draw itself
                 if ball is None:
                     esp.sendLine("pos none")
                 else:

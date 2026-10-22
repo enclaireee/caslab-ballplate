@@ -70,12 +70,15 @@ def findBall(mask):
 def findBallMm(frame):
     """One camera picture -> ball position (x_mm, y_mm), or None when the ball is not visible.
 
-    This is the function datalog.py calls once per frame.
+    This is the function datalog.py calls once per frame. It also draws the plate box
+    (blue) and the ball it found (green) on the picture, so datalog.py can show it.
     """
     mask = make_mask(frame, THRESHOLD)
     ball = findBall(mask)
+    cv2.rectangle(frame, (PLATE_LEFT, PLATE_TOP), (PLATE_RIGHT, PLATE_BOTTOM), (255, 0, 0), 2)
     if ball is None:
         return None
+    cv2.circle(frame, (int(ball[0]), int(ball[1])), 15, (0, 255, 0), 2)
     return toMm(ball[0], ball[1])
 
 
@@ -189,6 +192,7 @@ def main():
             ok, clean = cam.read()  # fresh picture without our drawings on it
             if ok:
                 select_plate(clean)
+                save_settings(threshold)  # save now, so a running datalog.py uses it at once
         if key == ord("q"):
             save_settings(threshold)
             break

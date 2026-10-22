@@ -13,7 +13,11 @@ export default function useLiveData() {
 
   useEffect(() => {
     const source = new EventSource(`${API}/stream`);
-    source.onopen = () => setConnected(true);
+    // (Re)connected = a new datalog run, so drop the old run's points.
+    source.onopen = () => {
+      setConnected(true);
+      setSamples([]);
+    };
     source.onerror = () => setConnected(false); // browser retries by itself
     source.onmessage = (event) => {
       const sample: Sample = JSON.parse(event.data);
