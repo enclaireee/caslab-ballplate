@@ -1,13 +1,17 @@
-import { fmt } from "../config";
+import { PLATE_HALF_MM, fmt } from "../config";
 import type { Sample } from "../config";
 import StatusPill from "./StatusPill";
 
-const HALF = 150; // plate is 300 x 300 mm, centre = (0, 0)
+const HALF = PLATE_HALF_MM; // short name for the plate half-size; centre = (0, 0)
 const TRAIL = 50; // trail = last 50 samples (about 1 s)
 const LOCK_MM = 5; // closer than this to the setpoint = "LOCK"
 
-// Grid lines every 30 mm (from -120 to 120).
-const GRID = [-120, -90, -60, -30, 30, 60, 90, 120];
+// Grid lines every 30 mm, ending just inside the plate edge (0 is the centre cross).
+const GRID_MM = 30;
+const GRID_REACH = Math.floor(PLATE_HALF_MM / GRID_MM);
+const GRID = Array.from({ length: 2 * GRID_REACH + 1 }, (_, i) => (i - GRID_REACH) * GRID_MM).filter(
+  (mm) => mm !== 0,
+);
 
 // Time of a sample as a camera timecode, e.g. 83400 ms -> "01:23.4".
 function timecode(ms: number) {
@@ -91,8 +95,8 @@ export default function PlateView({ samples, connected }: { samples: Sample[]; c
         </svg>
 
         <div className="flex justify-between px-7 font-mono text-[11px] text-muted">
-          <span>Plate 300 × 300 mm</span>
-          <span>Grid 30 mm</span>
+          <span>Plate {2 * PLATE_HALF_MM} × {2 * PLATE_HALF_MM} mm</span>
+          <span>Grid {GRID_MM} mm</span>
         </div>
       </div>
 

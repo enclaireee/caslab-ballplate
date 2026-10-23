@@ -13,20 +13,6 @@ export type StepResult = {
   sseMm: number | null;
 };
 
-// Turn CSV text into a list of samples (first line is the header).
-export function parseCsv(text: string): Sample[] {
-  const lines = text.trim().split("\n").slice(1);
-  return lines
-    .filter((line) => line.trim() !== "")
-    .map((line) => {
-      const c = line.split(",").map(Number);
-      return {
-        t_ms: c[0], x_mm: c[1], y_mm: c[2],
-        sp_x_mm: c[3], sp_y_mm: c[4], u_x_deg: c[5], u_y_deg: c[6],
-      };
-    });
-}
-
 // Position and setpoint of one sample on the chosen axis.
 function pos(s: Sample, axis: Axis) {
   return axis === "x" ? s.x_mm : s.y_mm;

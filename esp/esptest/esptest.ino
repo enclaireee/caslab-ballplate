@@ -1,8 +1,7 @@
 // esptest.ino - servo test, separate from the main sketch (open this file on its own).
 //
-// No Serial Monitor needed, but if you open one (115200 baud) it prints every
-// move, e.g. "right+up  X 1950  Y 1950". After the upload the ESP32 tilts the plate to the
-// extreme of each of the 8 directions, going back to flat in between:
+// After the upload the ESP32 tilts the plate to the extreme of each of the 8
+// directions, going back to flat in between:
 //   flat -> right -> flat -> right+up -> flat -> up -> flat -> ... -> right+down -> flat
 // and then starts again, forever. To stop it, unplug the ESP32 or upload esp/esp.ino.
 //
@@ -14,13 +13,37 @@
 
 #include <ESP32Servo.h>
 
-// Same as esp/esp.ino.
+// ---------- Servo hardware (same block in esp.ino, esptest.ino, espreset.ino) ----------
+
 const int SERVO_X_PIN = 2;
 const int SERVO_Y_PIN = 4;
+
+// The servo's own pulse scale (its full travel). Only for attach(); the limits
+// below are ours and narrower.
+const int SERVO_US_MIN = 500;
+const int SERVO_US_MAX = 2500;
+
+// Pulse width (microseconds) that makes the plate level on this rig, per axis.
 const int PULSE_CENTER_X = 1400;
 const int PULSE_CENTER_Y = 1400;
+
+// Never send a pulse outside these, so the plate does not hit its stops.
 const int PULSE_MIN = 1150;
 const int PULSE_MAX = 1950;
+
+// Microseconds of pulse per degree of plate tilt. With PULSE_CENTER = 1400,
+// PULSE_MIN = 1150, PULSE_MAX = 1950 and PULSE_PER_DEG = 100.0, the physical
+// tilt range is -5.5 deg (1950 us) to +2.5 deg (1150 us):
+//
+//   pulse_us = constrain(round(PULSE_CENTER + SERVO_DIR * tilt_deg * PULSE_PER_DEG),
+//                        PULSE_MIN, PULSE_MAX)
+const float PULSE_PER_DEG = 100.0f;
+
+// +1 = positive tilt pushes the ball towards +x / +y. -1 flips the direction.
+const int SERVO_DIR_X = -1;
+const int SERVO_DIR_Y = -1;
+
+// ---------- Test pattern ----------
 
 const int MOVE_MS = 1000;  // time for one move
 const int HOLD_MS = 1000;  // time to stay at each position
@@ -44,11 +67,22 @@ float nowY = PULSE_CENTER_Y;
 
 void setup() {
   Serial.begin(115200);
-  servoX.attach(SERVO_X_PIN, PULSE_MIN, PULSE_MAX);
-  servoY.attach(SERVO_Y_PIN, PULSE_MIN, PULSE_MAX);
+
+  // One timer per servo, 50 Hz, 16-bit pulse resolution.
+  ESP32PWM::allocateTimer(0);
+  ESP32PWM::allocateTimer(1);
+  servoX.setPeriodHertz(50);
+  servoY.setPeriodHertz(50);
+  servoX.attach(SERVO_X_PIN, SERVO_US_MIN, SERVO_US_MAX);
+  servoY.attach(SERVO_Y_PIN, SERVO_US_MIN, SERVO_US_MAX);
+  // 16-bit = 0.3 us steps. The 10-bit default rounds small moves away.
+  // Must come after attach(), because attach() resets the timer width.
+  servoX.setTimerWidth(16);
+  servoY.setTimerWidth(16);
+
   servoX.writeMicroseconds(PULSE_CENTER_X);
   servoY.writeMicroseconds(PULSE_CENTER_Y);
-  Serial.println("flat  X 1400  Y 1400  (2 s)");
+  Serial.printf("flat  X %d  Y %d  (2 s)\n", PULSE_CENTER_X, PULSE_CENTER_Y);
   delay(2000);  // 2 s flat, time to check that the plate is level
 }
 

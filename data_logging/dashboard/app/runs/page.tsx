@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { API } from "../config";
+import { API, parseCsv } from "../config";
 import type { Axis, Sample } from "../config";
-import { findSteps, parseCsv, stepMetrics } from "../stepResponse";
+import { findSteps, stepMetrics } from "../stepResponse";
 import LineChart from "../components/LineChart";
 import Section from "../components/Section";
 import PageTitle from "../components/PageTitle";
@@ -46,7 +46,8 @@ export default function RunsPage() {
   return (
     <div className="flex flex-col gap-8 sm:gap-12">
       <PageTitle title="Runs">
-        Every run datalog.py saved. Pick one to see the whole run and how the ball answered each setpoint step.
+        Every run datalog.py saved. Pick one to see the whole run; the step table fills in when the setpoint changes
+        during a run.
       </PageTitle>
 
       {error && (
@@ -83,8 +84,8 @@ export default function RunsPage() {
           </ol>
           {runs.length === 0 && !error && (
             <p className="py-4 text-sm text-muted">
-              No runs yet. Start <code className="font-mono text-ink">.venv/bin/python esp/datalog.py run1 --mock</code>{" "}
-              and let it run for a few seconds.
+              No runs yet. Start <code className="font-mono text-ink">.venv/bin/python esp/datalog.py run1</code> and
+              let it run for a few seconds.
             </p>
           )}
         </nav>

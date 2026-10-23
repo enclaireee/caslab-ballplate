@@ -1,54 +1,50 @@
 # datalog.py - the one program that talks to the ESP32.
 #
-# It runs the camera, sends the ball position to the ESP32, prints the reply,
-# saves every data line to a CSV file, and hands the data to the website.
+# It runs the camera, sends the ball position to the ESP32, saves every data
+# line to a CSV file, and serves those files to the dashboard.
 # Only one program can open the USB port, which is why all of this lives here.
 #
 # Run:  .venv/bin/python esp/datalog.py run1            real ESP32 + camera
-#       .venv/bin/python esp/datalog.py run1 --mock     fake ESP32, no hardware
 #       .venv/bin/python esp/datalog.py                name from the date and time
 # Stop: Ctrl+C
 #
 # Website addresses (only this laptop can open them):
-#   http://127.0.0.1:8000/stream          live data, one JSON sample per line (SSE)
 #   http://127.0.0.1:8000/runs            list of saved CSV files
 #   http://127.0.0.1:8000/runs/run1.csv   one saved CSV file
 
 import argparse
 import json
-import select
 import sys
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-# The camera code lives in vision/, and mock.py / esp_usb.py live next to this
-# file. Import them by their plain names, whatever folder you run this from.
+# The camera code lives in vision/, and esp_usb.py lives next to this file.
+# Import them by their plain names, whatever folder you run this from.
 sys.path.insert(0, str(Path(__file__).parent.parent / "vision"))
 sys.path.insert(0, str(Path(__file__).parent))
 
 HEADER = "t_ms,x_mm,y_mm,sp_x_mm,sp_y_mm,u_x_deg,u_y_deg"
-COLUMNS = HEADER.split(",")
 
 PORT = 8000
 
 RUNS_FOLDER = Path(__file__).parent.parent / "data_logging" / "runs"
 
-# Every data line of this run, so the website stream can send the new ones.
-# ponytail: grows forever (~3 MB per hour), fine for lab runs of a few minutes.
-lines = []
-
 
 def isDataLine(line):
-    """True for a data line. Lines starting with # are messages, not data."""
-    return line != "" and not line.startswith("#") and len(line.split(",")) == 7
-
-
-def toSample(line):
-    """'20,1.5,...' -> {"t_ms": 20.0, "x_mm": 1.5, ...} so the website can read it."""
-    values = [float(part) for part in line.split(",")]
-    return dict(zip(COLUMNS, values))
+    """True only for a well-formed 7-number CSV line, never for startup noise."""
+    if line == "" or line.startswith("#"):
+        return False
+    parts = line.split(",")
+    if len(parts) != 7:
+        return False
+    try:
+        for part in parts:
+            float(part)
+    except ValueError:
+        return False
+    return True
 
 
 def readReply(esp):
@@ -68,11 +64,9 @@ def listRuns():
 
 
 class Website(BaseHTTPRequestHandler):
-    """Answers the website's requests. Python runs do_GET for every GET request."""
+    """Answers the dashboard's GET requests for the run list and one CSV."""
     def do_GET(self):
-        if self.path == "/stream":
-            self.sendStream()
-        elif self.path == "/runs":
+        if self.path == "/runs":
             self.sendText(json.dumps(listRuns()), "application/json")
         elif self.path.startswith("/runs/"):
             name = self.path[len("/runs/"):]
@@ -88,31 +82,10 @@ class Website(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", content_type)
         # The Next.js page runs on port 3000, a different "site" than port 8000.
-        # Browsers block that unless we say it's allowed:
+        # Browsers block that unless we say it is allowed:
         self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
         self.wfile.write(text.encode())
-
-    def sendStream(self):
-        """Keep the connection open and send every new sample (Server-Sent Events)."""
-        self.send_response(200)
-        self.send_header("Content-Type", "text/event-stream")
-        self.send_header("Cache-Control", "no-cache")
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.end_headers()
-
-        sent = len(lines)  # start from now, not from the beginning of the run
-        try:
-            while True:
-                while sent < len(lines):
-                    sample = toSample(lines[sent])
-                    # SSE format: "data: <text>" and an empty line after each message
-                    self.wfile.write(f"data: {json.dumps(sample)}\n\n".encode())
-                    sent = sent + 1
-                self.wfile.flush()
-                time.sleep(0.02)  # check for new lines 50 times per second
-        except (BrokenPipeError, ConnectionResetError):
-            pass  # the browser tab was closed, stop this stream
 
     def log_message(self, format, *args):
         pass  # don't print every web request, the data lines are enough
@@ -121,93 +94,67 @@ class Website(BaseHTTPRequestHandler):
 def startWebsiteServer():
     # 127.0.0.1 = only this laptop can connect, not other people on the wifi
     server = ThreadingHTTPServer(("127.0.0.1", PORT), Website)
-    # The server waits for requests forever, so it gets its own thread (runs side by side
-    # with the main loop). daemon=True: it stops by itself when the main program stops.
+    # The server waits for requests forever, so it gets its own thread (runs side
+    # by side with the main loop). daemon=True: it stops when the main program stops.
     threading.Thread(target=server.serve_forever, daemon=True).start()
-    print(f"Website data at http://127.0.0.1:{PORT}/stream")
+    print(f"Website data at http://127.0.0.1:{PORT}/runs")
 
 
 def main():
     parser = argparse.ArgumentParser(description="Save a ball-and-plate run to a CSV file.")
     parser.add_argument("name", nargs="?", help="file name, e.g. run1 (default: date and time)")
-    parser.add_argument("--mock", action="store_true", help="use the fake ESP32 (no hardware)")
     parser.add_argument("--port", help="USB port of the ESP32 (default: find it)")
     args = parser.parse_args()
 
-    # File name: the one you typed, or one made from the date and time,
-    # so a new run never overwrites an old one.
+    # File name: the one you typed, or one made from the date and time.
+    # Leave it out to keep every run without overwriting an older one.
     name = args.name or time.strftime("run_%Y%m%d_%H%M%S.csv")
     if not name.endswith(".csv"):
         name = name + ".csv"
-    RUNS_FOLDER.mkdir(parents=True, exist_ok=True)  # make the folder if it's not there yet
+    RUNS_FOLDER.mkdir(parents=True, exist_ok=True)  # make the folder if it is missing
     filename = RUNS_FOLDER / name
 
-    # Two ways to get data lines, same three functions afterwards:
-    #   --mock    the fake ESP32 makes its own ball, no camera, no hardware
-    #   default   the camera finds the ball and the real ESP32 runs the PID
-    camera = None
-    if args.mock:
-        from mock import Esp
-        esp = Esp()
-        print("Using the fake ESP32 (no hardware needed).")
-    else:
-        import cv2
-        import vision
-        from esp_usb import Esp
-        settings_time = 0  # when vision/settings.json was last loaded (0 = not yet)
-        camera = vision.openCamera()
-        if not camera.isOpened():
-            sys.exit("Cannot open the camera. Check CAMERA in vision/vision.py and the camera permission.")
-        esp = Esp(port=args.port)
-        print("Using the real ESP32 and the camera.")
+    # The camera finds the ball and the real ESP32 runs the PID.
+    import vision
+    from esp_usb import Esp
+
+    vision.loadSettings()
+    camera = vision.openCamera()
+    if not camera.isOpened():
+        sys.exit("Cannot open the camera. Check CAMERA in vision/vision.py and the camera permission.")
+    esp = Esp(port=args.port)
+    print("Using the real ESP32 and the camera.")
 
     startWebsiteServer()
     csv_file = open(filename, "w")
     csv_file.write(HEADER + "\n")
     print("Saving to", filename, "- press Ctrl+C to stop")
 
+    # Throw away bytes that arrived while the camera and web server were starting.
+    esp.clearBuffer()
+
     try:
         while True:
-            # A command typed here goes to the ESP32: sp 50 0, pid 0.074 0 0.025
-            if select.select([sys.stdin], [], [], 0)[0]:
-                command = sys.stdin.readline().strip()
-                if command:
-                    esp.sendLine(command)
+            # 1. Where is the ball? (x, y) in mm, or None when it is hidden.
+            ok, frame = camera.read()
+            ball = vision.findBallMm(frame) if ok else None
 
-            if camera is not None:
-                # vision.py saved new settings (p or q)? Use them from this frame on.
-                file = vision.SETTINGS_FILE
-                if file.exists() and file.stat().st_mtime != settings_time:
-                    settings_time = file.stat().st_mtime
-                    vision.load_settings()
-                    print("Plate box x", vision.PLATE_LEFT, "-", vision.PLATE_RIGHT,
-                          " y", vision.PLATE_TOP, "-", vision.PLATE_BOTTOM, " threshold", vision.THRESHOLD)
+            # 2. Send the position to the ESP32, which does one control step.
+            if ball is None:
+                esp.sendLine("pos none")
+            else:
+                esp.sendLine(f"pos {ball[0]:.1f} {ball[1]:.1f}")
 
-                # 1. Where is the ball? Tell the ESP32, so it can do one control step.
-                ok, frame = camera.read()
-                ball = vision.findBallMm(frame) if ok else None
-                if ok:
-                    # Show what the controller sees. The green circle must be on the ball.
-                    cv2.imshow("datalog camera", frame)
-                    cv2.waitKey(1)  # gives the window 1 ms to draw itself
-                if ball is None:
-                    esp.sendLine("pos none")
-                else:
-                    esp.sendLine(f"pos {ball[0]:.1f} {ball[1]:.1f}")
-
-            # 2. Read the answer (one data line, or "# no ball").
+            # 3. Read the reply and save it if it is a data line.
             line = readReply(esp)
             if isDataLine(line):
                 csv_file.write(line + "\n")
                 csv_file.flush()  # write to disk now, so nothing is lost if it crashes
-                lines.append(line)  # the website stream picks it up from here
-            print(line)
     except KeyboardInterrupt:
         print("Stopped. Data saved in", filename)
     finally:
         csv_file.close()
-        if camera is not None:
-            camera.release()
+        camera.release()
 
 
 if __name__ == "__main__":

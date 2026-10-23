@@ -4,6 +4,8 @@ import LineChart from "./components/LineChart";
 import PageTitle from "./components/PageTitle";
 import PlateView from "./components/PlateView";
 import Section from "./components/Section";
+import TiltMeter from "./components/TiltMeter";
+import { TILT_DISPLAY_MAX_DEG } from "./config";
 import useLiveData from "./useLiveData";
 
 // Live page: the camera's view of the plate on the left (with the newest numbers
@@ -24,6 +26,9 @@ export default function LivePage() {
         </div>
 
         <div className="flex min-w-0 flex-col gap-6 lg:col-span-4 lg:gap-8">
+          <Section title={`Tilt · ±${TILT_DISPLAY_MAX_DEG}°`}>
+            <TiltMeter samples={samples} />
+          </Section>
           <Section title="X position · last 10 s">
             <LineChart samples={samples} yKey="x_mm" spKey="sp_x_mm" />
           </Section>

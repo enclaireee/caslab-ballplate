@@ -152,8 +152,7 @@ export default function HowToRunPage() {
               note={
                 <>
                   Saves every sample to <Code>data_logging/runs/run1.csv</Code>. Leave out the name and it uses the
-                  date and time. No hardware yet? Add <Code>--mock</Code> after the name: the fake ESP32 runs the same
-                  PID on a simulated ball.
+                  date and time.
                 </>
               }
             />
@@ -193,9 +192,10 @@ export default function HowToRunPage() {
               commands={[".venv/bin/python esp/datalog.py run1"]}
               note={
                 <>
-                  Without <Code>--mock</Code> the logger opens the camera and sends <Code>pos x y</Code> to the board
+                  The logger opens the camera and sends <Code>pos x y</Code> to the board
                   once per frame. The USB port is found automatically; add <Code>--port /dev/cu.usbserial-0001</Code>{" "}
-                  if it picks the wrong one. Type <Code>sp 50 0</Code> in this terminal to move the setpoint.
+                  if it picks the wrong one. The setpoint is the plate centre, (0, 0), set by <Code>SP_X</Code> and{" "}
+                  <Code>SP_Y</Code> in <Code>esp/esp.ino</Code>.
                 </>
               }
             />

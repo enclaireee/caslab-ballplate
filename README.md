@@ -1,6 +1,6 @@
 # Ball and Plate
 
-Control Lab Task 4: an ESP32 keeps a ball at a setpoint on a tilting plate, using a camera as the sensor and PID control. How it all fits together: [architecture.md](architecture.md).
+Control Lab Task 4: an ESP32 keeps a ball at the centre of a tilting plate, using a camera as the sensor and PID control. How it all fits together: [architecture.md](architecture.md).
 
 The whole loop:
 
@@ -28,43 +28,28 @@ Run everything with `.venv/bin/python` (Homebrew Python blocks installing packag
 .venv/bin/python vision/vision.py
 ```
 
-- `p` = drag a box over the black plate, then Enter (saved at once; a running `datalog.py` picks it up)
+- `p` = drag a box over the plate, then Enter (saved at once)
 - threshold slider (in the `mask` window): move it until only the ball is white
-- `q` = save the settings (box + threshold) to `vision/settings.json` and quit
+- `q` = save the box and threshold to `vision/settings.json` and quit
+
+`datalog.py` reads the settings once at startup, so stop it before changing them.
 
 Mac: if the camera doesn't open, allow it in System Settings → Privacy & Security → Camera for the app you run it from (e.g. VS Code), then restart that app.
 
 ## 2. Run a log
 
-Without hardware:
-
-```bash
-.venv/bin/python esp/datalog.py run1 --mock
-```
-
-With the real rig:
-
 ```bash
 .venv/bin/python esp/datalog.py run1
 ```
 
-- Saves to `data_logging/runs/run1.csv` (no name = a name with the date and time).
-- Also starts the web server for the dashboard at `http://127.0.0.1:8000`.
-- The real mode opens the camera, sends `pos x y` to the ESP32 once per frame,
-  and saves the data line the ESP32 sends back. Its `datalog camera` window shows
-  what the controller sees: the green circle must be on the ball.
-- `Ctrl+C` stops it.
+- Opens the camera and finds the ball in mm.
+- Sends `pos x y` to the ESP32 once per frame, or `pos none` when the ball is hidden.
+- Saves the data line the ESP32 sends back to `data_logging/runs/run1.csv`.
+- Serves the dashboard's data at `http://127.0.0.1:8000`.
 
-The fake ESP32 (`esp/mock.py`) runs the same PID as the firmware on a simulated
-ball, so the logger and the dashboard can be tested with no hardware at all.
+No name = a name made from the date and time. `Ctrl+C` stops it.
 
-While the logger runs, a line you type in that terminal goes to the ESP32, so you
-can move the setpoint or retune without stopping the run:
-
-```
-sp 50 0          setpoint to x=50 mm, y=0 mm
-pid 0.074 0 0.025   set kp ki kd (both axes)
-```
+The setpoint is fixed at the plate centre, `(0, 0)`. The PID gains and the servo settings are constants at the top of `esp/esp.ino`; change them there and reflash the board.
 
 ## 3. Dashboard
 
@@ -76,6 +61,8 @@ npm run dev
 ```
 
 Then open `http://localhost:3000`.
+
+The Live page reads the newest CSV every 0.5 s (the logger appends one line per frame). The Runs page opens any saved run.
 
 ## 4. Flash the ESP32
 
@@ -97,33 +84,41 @@ of each of the 8 directions (`PULSE_MIN`/`PULSE_MAX` per axis), back to flat in
 between, holding each for 1 s, until you unplug the ESP32 or upload `esp.ino`.
 It never goes outside `PULSE_MIN`..`PULSE_MAX`.
 
+`esp/espreset/espreset.ino` is the smallest sketch: it sends both servos to the
+centre pulse once, prints `# espreset: center pulse X=... Y=...`, and stops.
+Upload it to level the plate after a test.
+
 The settings at the top of `esp/esp.ino` (pins, servo pulses, direction, PID gains) are set for the standard rig. Check them on the bench:
 
 | Setting | Where | How to check |
 |---|---|---|
 | Servo pins | `SERVO_X_PIN`, `SERVO_Y_PIN` | match your wiring |
 | Servo level pulse | `PULSE_CENTER_X`, `PULSE_CENTER_Y` (1400 µs) | adjust each until its axis is level (phone level app) |
+| Servo pulse scale | `SERVO_US_MIN`, `SERVO_US_MAX` (500 / 2500 µs) | the servo's full travel, only used by `attach()` |
 | Servo pulse limits | `PULSE_MIN`, `PULSE_MAX` (1150 / 1950 µs) | just short of where the plate hits the frame |
 | Servo direction | `SERVO_DIR_X`, `SERVO_DIR_Y` | tilt +5°: the ball must roll toward +x / +y |
 | Pulse per plate degree | `PULSE_PER_DEG` | send centre + 100 µs, read the tilt, `100 / tilt` |
-| PID gains | `KP`, `KI`, `KD` | tune with `pid kp ki kd` over serial |
+| PID gains | `KP`, `KI`, `KD` in `esp/esp.ino` | tune on the bench, then reflash |
 | Camera number | `CAMERA` in `vision/vision.py` | 0 = built-in webcam, 1 = USB webcam or iPhone |
 | Plate size | `PLATE_W_MM`, `PLATE_H_MM` in `vision/vision.py` | measure the plate inside the box with a ruler |
 | Plate box + threshold | `vision/settings.json` | run `vision.py`, `p` and the slider, then `q` |
+
+`PULSE_PER_DEG = 100` and the 250 × 250 mm plate are nominal values, not measured
+yet. Every tilt limit and every mm value depends on them.
 
 ## Files
 
 ```
 vision/vision.py     ball in the picture -> x, y mm
-esp/esp.ino          ESP32: settings, setup, loop, serial commands
+esp/esp.ino          ESP32: settings, setup, loop, pos command
 esp/pid.ino          PID maths for one axis
 esp/plate.ino        tilt angle -> servo pulse
-esp/pid.h            the Pid type
+esp/pid.h            the Axis and PID types
 esp/esptest/         servo test sketch: every extreme tilt, then flat, forever
+esp/espreset/        reset sketch: plate level, then stops
 esp/datalog.py       laptop: camera -> ESP32, save CSV, serve the dashboard
 esp/esp_usb.py       real ESP32 over USB
-esp/mock.py          fake ESP32, no hardware needed
-esp/test_datalog.py  check that datalog.py stays in step with the ESP32
 data_logging/runs/   one CSV per run
 data_logging/dashboard/  Next.js dashboard (Live, Runs, Setup)
+analysis/            analysis reports and the evidence behind them
 ```

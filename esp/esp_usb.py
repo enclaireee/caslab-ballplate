@@ -1,6 +1,6 @@
 # esp_usb.py - the real ESP32 over USB.
 #
-# Same two functions as mock.py, so datalog.py can use either one:
+# The two functions datalog.py uses:
 #   sendLine("pos 12.5 -3.0")   send one command line to the ESP32
 #   readLine()                  wait for the next line the ESP32 prints
 #
@@ -35,6 +35,9 @@ class Esp:
         print("ESP32 on", port)
         # Opening the port restarts the ESP32, so give it time to boot.
         time.sleep(1.5)
+
+    def clearBuffer(self):
+        """Throw away startup noise that arrived before the camera was ready."""
         self.port.reset_input_buffer()
 
     def sendLine(self, text):
@@ -42,5 +45,6 @@ class Esp:
         self.port.write((text + "\n").encode())
 
     def readLine(self):
-        """Wait for the next line and return it as text (without the newline)."""
-        return self.port.readline().decode(errors="replace").strip()
+        """Wait for the next line and return it as clean text (no newline)."""
+        raw = self.port.readline().replace(b"\x00", b"")
+        return raw.decode("utf-8", errors="ignore").strip()

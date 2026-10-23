@@ -1,23 +1,26 @@
-// pid.h - the Pid type, shared by esp.ino and pid.ino.
+// pid.h - the two-axis PID type, shared by esp.ino, pid.ino and plate.ino.
 //
-// It lives in a header because esp.ino creates the two Pid objects at the top
-// of the file, so the type has to be known before pid.ino is reached.
+// It lives in a header because esp.ino creates the PID object at the top of
+// the file, so the type has to be known before pid.ino is reached.
 
 #pragma once
 
-// The plate never tilts more than this, in degrees.
-const float TILT_LIMIT = 15.0;
-
 // All the memory one axis's PID needs.
-struct Pid {
-  float kp;
-  float ki;
-  float kd;
-  float integral;   // running sum of error * dt
-  float lastPos;    // previous position, to measure how fast the ball moves
-  bool haveLast;    // false until the first position arrives
+struct Axis {
+  float kp;        // degrees of tilt per mm of error
+  float ki;        // degrees per (mm * second)
+  float kd;        // degrees per (mm / second) of ball speed
+  float integral;  // running sum of error * dt, in mm * second
+  float prevPos;   // previous ball position in mm (NAN = no previous frame)
+  float tiltMin;   // lowest tilt the pulse window allows, in degrees
+  float tiltMax;   // highest tilt the pulse window allows, in degrees
 };
 
-void pidBegin(Pid &p, float kp, float ki, float kd);
-float pidStep(Pid &p, float setpoint, float pos, float dt);
-void resetIntegral(Pid &p);
+// Both axes of the plate.
+struct PID {
+  Axis x;
+  Axis y;
+};
+
+void resetPID(PID &p);
+float axisStep(Axis &a, float setpoint, float pos, float dt);
