@@ -4,8 +4,9 @@
 # line to a CSV file, and serves those files to the dashboard.
 # Only one program can open the USB port, which is why all of this lives here.
 #
-# Run:  .venv/bin/python esp/datalog.py run1            real ESP32 + camera
-#       .venv/bin/python esp/datalog.py                name from the date and time
+# Run:  .venv\Scripts\python esp\datalog.py run1              real ESP32 + camera
+#       .venv\Scripts\python esp\datalog.py                   name from the date and time
+#       .venv\Scripts\python esp\datalog.py run1 --port COM3  if the port is not found
 # Stop: Ctrl+C
 #
 # Website addresses (only this laptop can open them):

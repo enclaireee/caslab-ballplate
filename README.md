@@ -12,20 +12,22 @@ The laptop measures and logs. The ESP32 does the control. The dashboard shows bo
 
 ## Setup (once)
 
-From the project folder:
+You need Python 3 from python.org (it includes the `py` launcher) and Node.js 20.9 or newer. Open PowerShell or cmd in the project folder:
 
 ```bash
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-cd data_logging/dashboard && npm install && cd ../..
+py -m venv .venv
+.venv\Scripts\pip install -r requirements.txt
+cd data_logging\dashboard
+npm install
+cd ..\..
 ```
 
-Run everything with `.venv/bin/python` (Homebrew Python blocks installing packages globally).
+From now on run everything with `.venv\Scripts\python`, so the installed packages are found.
 
 ## 1. Vision: find the ball
 
 ```bash
-.venv/bin/python vision/vision.py
+.venv\Scripts\python vision\vision.py
 ```
 
 - `p` = drag a box over the plate, then Enter (saved at once)
@@ -34,12 +36,14 @@ Run everything with `.venv/bin/python` (Homebrew Python blocks installing packag
 
 `datalog.py` reads the settings once at startup, so stop it before changing them.
 
-Mac: if the camera doesn't open, allow it in System Settings → Privacy & Security → Camera for the app you run it from (e.g. VS Code), then restart that app.
+If the camera doesn't open, go to Windows Settings → Privacy & security → Camera. Turn on "Camera access" and "Let desktop apps access your camera".
+
+After you switch to a new webcam or move it, redo the plate box and threshold (`p`, slider, `q`), because `settings.json` stores pixel positions from the old camera.
 
 ## 2. Run a log
 
 ```bash
-.venv/bin/python esp/datalog.py run1
+.venv\Scripts\python esp\datalog.py run1
 ```
 
 - Opens the camera and finds the ball in mm.
@@ -49,6 +53,8 @@ Mac: if the camera doesn't open, allow it in System Settings → Privacy & Secur
 
 No name = a name made from the date and time. `Ctrl+C` stops it.
 
+The ESP32's USB port is found automatically. If it picks the wrong one, add `--port COM3`. The number is in Device Manager → Ports (COM & LPT), or in Arduino IDE → Tools → Port. If no COM port appears when the ESP32 is plugged in, install the USB driver for the board's chip (Silicon Labs CP210x or WCH CH340). Windows Update usually does this by itself.
+
 The setpoint is fixed at the plate centre, `(0, 0)`. The PID gains and the servo settings are constants at the top of `esp/esp.ino`; change them there and reflash the board.
 
 ## 3. Dashboard
@@ -56,7 +62,7 @@ The setpoint is fixed at the plate centre, `(0, 0)`. The PID gains and the servo
 Keep `datalog.py` running, and in a second terminal:
 
 ```bash
-cd data_logging/dashboard
+cd data_logging\dashboard
 npm run dev
 ```
 
@@ -99,12 +105,19 @@ The settings at the top of `esp/esp.ino` (pins, servo pulses, direction, PID gai
 | Servo direction | `SERVO_DIR_X`, `SERVO_DIR_Y` | tilt +5°: the ball must roll toward +x / +y |
 | Pulse per plate degree | `PULSE_PER_DEG` | send centre + 100 µs, read the tilt, `100 / tilt` |
 | PID gains | `KP`, `KI`, `KD` in `esp/esp.ino` | tune on the bench, then reflash |
-| Camera number | `CAMERA` in `vision/vision.py` | 0 = built-in webcam, 1 = USB webcam or iPhone |
+| Camera number | `CAMERA` in `vision/vision.py` | 0 = built-in webcam, 1 = USB webcam |
 | Plate size | `PLATE_W_MM`, `PLATE_H_MM` in `vision/vision.py` | measure the plate inside the box with a ruler |
 | Plate box + threshold | `vision/settings.json` | run `vision.py`, `p` and the slider, then `q` |
 
 `PULSE_PER_DEG = 100` and the 250 × 250 mm plate are nominal values, not measured
 yet. Every tilt limit and every mm value depends on them.
+
+## If something doesn't work
+
+- "Only one usage of each socket address": another program (often an old `datalog.py`) holds port 8000. Run `netstat -ano | findstr :8000`, then `taskkill /PID PID /F`.
+- "No ESP32 found": close the Arduino Serial Monitor, then try again or pass `--port COM3`.
+- "Access is denied" on the COM port: another program holds it, the Arduino Serial Monitor or an old `datalog.py` in another terminal. Close it.
+- "running scripts is disabled" (PowerShell blocks npm): run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once in PowerShell, or use cmd.
 
 ## Files
 

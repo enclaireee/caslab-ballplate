@@ -1,4 +1,5 @@
 import json
+import sys
 import time
 from pathlib import Path
 
@@ -146,7 +147,10 @@ def saveSettings(threshold):
 
 def openCamera():
     """Open the webcam and ask for 640x480."""
-    camera = cv2.VideoCapture(CAMERA)
+    # Windows: use DirectShow. The default (MSMF) keeps up to 3 old pictures
+    # waiting, which adds delay; DirectShow keeps at most 1.
+    backend = cv2.CAP_DSHOW if sys.platform == "win32" else cv2.CAP_ANY
+    camera = cv2.VideoCapture(CAMERA, backend)
     camera.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
     camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
     # Keep only 1 waiting picture, so we always get the newest one (less delay).
@@ -183,7 +187,7 @@ def main():
     while True:
         ok, frame = camera.read()
         if not ok:
-            print("Cannot read the camera. Check CAMERA number (and camera permission on Mac).")
+            print("Cannot read the camera. Check the CAMERA number and the Windows camera permission.")
             break
 
         threshold = cv2.getTrackbarPos("threshold", "mask")

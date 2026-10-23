@@ -23,12 +23,13 @@ A two-axis ball-on-plate rig for Control Lab Task 4. A webcam finds the ball, th
 | `analysis/` | Analysis reports and the evidence behind them | Laptop |
 | `architecture.md`, `README.md`, `CLAUDE.md` | Design, how-to and this file | Docs |
 
-Skip these when analysing: `.venv/` (macOS only, cannot run on Linux), `data_logging/dashboard/.next/`, `node_modules/`, `__pycache__/`, `.playwright-mcp/`.
+Skip these when analysing: `.venv/` (machine-specific Windows venv), `data_logging/dashboard/.next/`, `node_modules/`, `__pycache__/`, `.playwright-mcp/`.
 
 ## Hardware
 
 - ESP32 dev board. Servo X on GPIO 2, servo Y on GPIO 4.
 - Two MG90S servos: 4.8 to 6 V, 500 to 2400 µs pulses at 50 Hz, 180° of travel, stall current about 650 to 800 mA. They need their own 5 V supply with the grounds joined. Powering them from the ESP32 USB or 3.3 V rail can cause brownout resets.
+- Laptop: Windows 10/11, Python 3 in `.venv`, USB webcam.
 - Webcam (`CAMERA` in `vision/vision.py`). Plate nominally 250 × 250 mm, not yet measured.
 
 ## Control chain and units

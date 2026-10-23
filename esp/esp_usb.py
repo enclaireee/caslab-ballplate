@@ -5,7 +5,7 @@
 #   readLine()                  wait for the next line the ESP32 prints
 #
 # The port is found automatically. Pass a name if that picks the wrong one:
-#   Esp(port="/dev/cu.usbserial-0001")     (Arduino IDE -> Tools -> Port)
+#   Esp(port="COM3")     (Device Manager -> Ports (COM & LPT), or Arduino IDE -> Tools -> Port)
 
 import time
 
@@ -16,9 +16,12 @@ BAUD = 115200
 
 
 def findPort():
-    """Name of the first USB serial port, e.g. /dev/cu.usbserial-0001."""
+    """Name of the first USB serial port, e.g. COM3.
+
+    Windows names every port COMx, so we can't tell from the name. A USB port
+    has a vendor id (vid); Bluetooth and built-in ports have none."""
     for info in list_ports.comports():
-        if "usb" in info.device.lower():
+        if info.vid is not None:
             return info.device
     return None
 
@@ -28,8 +31,8 @@ class Esp:
         port = port or findPort()
         if port is None:
             raise RuntimeError(
-                "No ESP32 found. Plug it in, or pass the port: "
-                "Esp(port='/dev/cu.usbserial-0001')"
+                "No ESP32 found. Plug it in, or pass the port: --port COM3 "
+                "(Device Manager -> Ports (COM & LPT))"
             )
         self.port = serial.Serial(port, BAUD, timeout=2)
         print("ESP32 on", port)

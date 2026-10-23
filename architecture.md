@@ -130,8 +130,10 @@ Only one program can open the ESP32's USB port, so `datalog.py` is the only prog
 `esp_usb.py` gives it three functions: `sendLine(text)`, `readLine()` and `clearBuffer()`. `readLine()` strips NUL bytes and decodes with `errors="ignore"`; `clearBuffer()` throws away startup noise after the camera and web server are ready.
 
 ```bash
-.venv/bin/python esp/datalog.py run1           # real ESP32 + camera
+.venv\Scripts\python esp\datalog.py run1       # real ESP32 + camera
 ```
+
+On Windows, `vision.py` opens the camera with DirectShow (`cv2.CAP_DSHOW`), because the default backend queues up to 3 frames, which adds control delay.
 
 Web server (Python built-in `http.server`, only reachable from this laptop):
 
@@ -160,21 +162,21 @@ The plate drawing and the gauge use `PLATE_HALF_MM = 125` and `TILT_DISPLAY_MAX_
 
 ## How to run (laptop)
 
-- `.venv/bin/python vision/vision.py`: camera only, shows where the ball is. Use it to set up the camera.
-- `.venv/bin/python esp/datalog.py run1`: logs to `data_logging/runs/run1.csv` and starts the web server. Ctrl+C stops it.
+- `.venv\Scripts\python vision\vision.py`: camera only, shows where the ball is. Use it to set up the camera.
+- `.venv\Scripts\python esp\datalog.py run1`: logs to `data_logging/runs/run1.csv` and starts the web server. Ctrl+C stops it.
 - `npm run dev` in `data_logging/dashboard/`: the dashboard at `http://localhost:3000`.
 
-Use the project's `.venv` Python (`.venv/bin/python ...`). Python libraries: `opencv-python`, `pyserial`. Nothing else.
+Use the project's `.venv` Python (`.venv\Scripts\python ...`). Python libraries: `opencv-python`, `pyserial`. Nothing else.
 
 ## Bench calibration (values in `esp/esp.ino` and `vision/settings.json`)
 
 | Setting | How to find it |
 |---|---|
-| Camera number (`CAMERA` in `vision.py`) | 0 = built-in webcam, try 1 for the USB webcam |
-| Plate box in the picture | run `vision.py`, press `p`, drag a box over the plate (saved to `vision/settings.json` on `q`) |
+| Camera number (`CAMERA` in `vision.py`) | 0 = built-in webcam, 1 = USB webcam |
+| Plate box in the picture | run `vision.py`, press `p`, drag a box over the plate (saved to `vision/settings.json` on `q`). Redo it after switching or moving the webcam: the file stores pixel positions from the old camera |
 | Threshold | slider in `vision.py` until only the ball is white (saved on `q`) |
 | Plate size (mm) | ruler; change `PLATE_W_MM` / `PLATE_H_MM` in `vision.py` |
-| ESP32 USB port name | found automatically; pass `--port` if the wrong one is picked (Arduino IDE → Tools → Port) |
+| ESP32 USB port name | found automatically; pass `--port COM3` if the wrong one is picked (Device Manager → Ports (COM & LPT), or Arduino IDE → Tools → Port) |
 | Servo pins (`SERVO_X_PIN`, `SERVO_Y_PIN`) | from your friend's wiring |
 | Servo level pulses (`PULSE_CENTER_X`, `PULSE_CENTER_Y`, now 1400 µs) | adjust each until its axis is level (phone level app) |
 | Servo pulse scale (`SERVO_US_MIN`, `SERVO_US_MAX`, 500 / 2500 µs) | the servo's full travel, only used by `attach()` |

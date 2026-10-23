@@ -21,11 +21,11 @@ const problems = [
     fix: <>Terminal 1 is not running. Start step 2 again.</>,
   },
   {
-    problem: "Address already in use",
+    problem: "Only one usage of each socket address",
     fix: (
       <>
-        An old datalog.py still holds port 8000. Find its PID with <Code>lsof -i :8000</Code>, then stop it with{" "}
-        <Code>kill PID</Code>.
+        Another program (often an old datalog.py) holds port 8000. Find its PID with <Code>netstat -ano | findstr :8000</Code>, then
+        stop it with <Code>taskkill /PID PID /F</Code>.
       </>
     ),
   },
@@ -34,7 +34,26 @@ const problems = [
     fix: (
       <>
         The board is not plugged in, or another program holds the port. Close the Arduino Serial Monitor, then try
-        again. If it still fails, pass the port: <Code>--port /dev/cu.usbserial-0001</Code>.
+        again. If it still fails, pass the port: <Code>--port COM3</Code>. If no COM port appears at all, install the
+        USB driver for the board&apos;s chip (Silicon Labs CP210x or WCH CH340).
+      </>
+    ),
+  },
+  {
+    problem: "Access is denied",
+    fix: (
+      <>
+        Another program holds the COM port: the Arduino Serial Monitor, or an old datalog.py still running in
+        another terminal. Close it, then try again.
+      </>
+    ),
+  },
+  {
+    problem: "running scripts is disabled",
+    fix: (
+      <>
+        PowerShell blocks npm. Run <Code>Set-ExecutionPolicy -Scope CurrentUser RemoteSigned</Code> once in
+        PowerShell, or use cmd.
       </>
     ),
   },
@@ -126,18 +145,22 @@ export default function HowToRunPage() {
 
         <ol>
           <Step n="01" title="Set up" when="only once">
-            <p className="text-muted">Makes a Python environment in .venv and installs the Python and dashboard packages.</p>
+            <p className="text-muted">
+              Makes a Python environment in .venv and installs the Python and dashboard packages. You need Python 3
+              from python.org (it includes the <Code>py</Code> launcher) and Node.js 20.9 or newer.
+            </p>
             <Terminal
               title="Terminal"
               commands={[
-                "python3 -m venv .venv",
-                ".venv/bin/pip install -r requirements.txt",
-                "cd data_logging/dashboard && npm install && cd ../..",
+                "py -m venv .venv",
+                ".venv\\Scripts\\pip install -r requirements.txt",
+                "cd data_logging\\dashboard",
+                "npm install",
+                "cd ..\\..",
               ]}
               note={
                 <>
-                  From now on use <Code>.venv/bin/python</Code> instead of <Code>python3</Code>, so the installed
-                  packages are found.
+                  From now on use <Code>.venv\Scripts\python</Code>, so the installed packages are found.
                 </>
               }
             />
@@ -148,7 +171,7 @@ export default function HowToRunPage() {
             <Terminal
               title="Terminal 1 · logger"
               running
-              commands={[".venv/bin/python esp/datalog.py run1"]}
+              commands={[".venv\\Scripts\\python esp\\datalog.py run1"]}
               note={
                 <>
                   Saves every sample to <Code>data_logging/runs/run1.csv</Code>. Leave out the name and it uses the
@@ -159,7 +182,7 @@ export default function HowToRunPage() {
             <Terminal
               title="Terminal 2 · dashboard"
               running
-              commands={["cd data_logging/dashboard", "npm run dev"]}
+              commands={["cd data_logging\\dashboard", "npm run dev"]}
               note={
                 <>
                   Then open <Code>http://localhost:3000</Code>. The Live page turns green when data arrives.
@@ -175,8 +198,8 @@ export default function HowToRunPage() {
             </p>
             <Terminal
               title="Terminal"
-              commands={[".venv/bin/python vision/vision.py"]}
-              note="Mac: if no camera window opens, allow your terminal in System Settings → Privacy & Security → Camera."
+              commands={[".venv\\Scripts\\python vision\\vision.py"]}
+              note='If no camera window opens: Windows Settings → Privacy & security → Camera, turn on "Camera access" and "Let desktop apps access your camera". After switching or moving the webcam, redo the plate box and threshold (p, slider, q).'
             />
           </Step>
 
@@ -189,12 +212,13 @@ export default function HowToRunPage() {
             </p>
             <Terminal
               title="Terminal 1 · real rig"
-              commands={[".venv/bin/python esp/datalog.py run1"]}
+              commands={[".venv\\Scripts\\python esp\\datalog.py run1"]}
               note={
                 <>
                   The logger opens the camera and sends <Code>pos x y</Code> to the board
-                  once per frame. The USB port is found automatically; add <Code>--port /dev/cu.usbserial-0001</Code>{" "}
-                  if it picks the wrong one. The setpoint is the plate centre, (0, 0), set by <Code>SP_X</Code> and{" "}
+                  once per frame. The USB port is found automatically; add <Code>--port COM3</Code>{" "}
+                  if it picks the wrong one (the number is in Device Manager → Ports (COM &amp; LPT) or Arduino IDE →
+                  Tools → Port). The setpoint is the plate centre, (0, 0), set by <Code>SP_X</Code> and{" "}
                   <Code>SP_Y</Code> in <Code>esp/esp.ino</Code>.
                 </>
               }
