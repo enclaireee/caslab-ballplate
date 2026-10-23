@@ -1,9 +1,17 @@
 // esptest.ino - servo test, separate from the main sketch (open this file on its own).
 //
-// After the upload the ESP32 tilts the plate to the extreme of each of the 8
+// After the upload the ESP32 tilts the plate as far as it can in each of the 8
 // directions, going back to flat in between:
 //   flat -> right -> flat -> right+up -> flat -> up -> flat -> ... -> right+down -> flat
 // and then starts again, forever. To stop it, unplug the ESP32 or upload esp/esp.ino.
+//
+// The names say where the BALL rolls, seen from the camera: right = +x,
+// up = +y (the same axes as esp.ino). SERVO_DIR_X/Y turn that into the right
+// pulse, so if "right" rolls the ball left, that SERVO_DIR is wrong.
+//
+// Each side goes to its own pulse limit, so the tilt is not the same both ways:
+// with the numbers below, right/up reach +2.5 deg (1150 us) and left/down
+// reach -5.5 deg (1950 us). The Serial Monitor (115200 baud) prints both.
 //
 // Every move is smooth (slow at the start and end), and it holds each position
 // for a moment so you can look at it or measure it.
@@ -48,7 +56,8 @@ const int SERVO_DIR_Y = -1;
 const int MOVE_MS = 1000;  // time for one move
 const int HOLD_MS = 1000;  // time to stay at each position
 
-// The 8 directions: -1 = PULSE_MIN, 0 = centre, +1 = PULSE_MAX, for X and Y.
+// The 8 directions the ball should roll: +1 = towards +x / +y, -1 = towards
+// -x / -y, 0 = that axis stays flat. Read as {x, y}.
 const int DIRECTIONS[8][2] = {
   {+1, 0}, {+1, +1}, {0, +1}, {-1, +1},
   {-1, 0}, {-1, -1}, {0, -1}, {+1, -1},
@@ -88,22 +97,34 @@ void setup() {
 
 void loop() {
   for (int i = 0; i < 8; i++) {
-    moveTo(NAMES[i], toPulse(DIRECTIONS[i][0], PULSE_CENTER_X), toPulse(DIRECTIONS[i][1], PULSE_CENTER_Y));
+    int pulseX = rollPulse(DIRECTIONS[i][0], PULSE_CENTER_X, SERVO_DIR_X);
+    int pulseY = rollPulse(DIRECTIONS[i][1], PULSE_CENTER_Y, SERVO_DIR_Y);
+    moveTo(NAMES[i], pulseX, pulseY);
     moveTo("flat", PULSE_CENTER_X, PULSE_CENTER_Y);  // back to flat
   }
 }
 
-// -1 / 0 / +1 -> PULSE_MIN / centre / PULSE_MAX
-int toPulse(int direction, int center) {
-  if (direction < 0) return PULSE_MIN;
-  if (direction > 0) return PULSE_MAX;
+// The pulse that rolls the ball as far as allowed towards `roll` (+1 / -1),
+// or the centre for 0. A positive tilt moves the pulse by +servoDir, so the
+// side to use is the sign of roll * servoDir.
+int rollPulse(int roll, int center, int servoDir) {
+  int side = roll * servoDir;
+  if (side > 0) return PULSE_MAX;
+  if (side < 0) return PULSE_MIN;
   return center;
+}
+
+// Plate tilt in degrees for a pulse, the inverse of the formula above.
+float pulseToTilt(int pulse, int center, int servoDir) {
+  return (pulse - center) / (servoDir * PULSE_PER_DEG);
 }
 
 // Glide both servos from where they are to (targetX, targetY), then hold there.
 // name is only for the Serial Monitor.
 void moveTo(const char *name, int targetX, int targetY) {
-  Serial.printf("%-10s  X %d  Y %d\n", name, targetX, targetY);
+  Serial.printf("%-10s  X %d us (%+.1f deg)  Y %d us (%+.1f deg)\n", name,
+                targetX, pulseToTilt(targetX, PULSE_CENTER_X, SERVO_DIR_X),
+                targetY, pulseToTilt(targetY, PULSE_CENTER_Y, SERVO_DIR_Y));
   float startX = nowX;
   float startY = nowY;
   unsigned long startMs = millis();

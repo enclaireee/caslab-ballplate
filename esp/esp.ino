@@ -48,8 +48,8 @@ const int SERVO_DIR_Y = -1;
 
 // PID gains. KP is degrees of tilt per mm of error, KD damps the ball speed.
 const float KP = 0.03f;
-const float KI = 0.0f;
-const float KD = 0.02f;
+const float KI = 0.01f;
+const float KD = 0.03f;
 
 // Target: the centre of the plate, in mm.
 const float SP_X = 0.0f;

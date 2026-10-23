@@ -95,7 +95,7 @@ Every piece of code that turns a tilt into a servo pulse follows these rules. Ch
 - **Tilt -> pulse:** `pulse = center + dir * PULSE_PER_DEG * tilt`, clamped to `PULSE_MIN..PULSE_MAX` (`tiltToPulse`, `esp/plate.ino`).
 - **Tilt limits are per axis and not symmetric.** `setTiltLimits()` (`esp/plate.ino`) inverts the line above at both pulse limits and is the only place that writes `pid.x/y.tiltMin/tiltMax`. Now: (1150-1400)/(-100) = +2.5° and (1950-1400)/(-100) = -5.5°, so -5.5..+2.5°. The PID clamps to this range and freezes its integral there (`axisStep`, `esp/pid.ino`). Never hard-code a tilt limit: it changes with every center, window, `PULSE_PER_DEG` or `SERVO_DIR` value.
 - **The PID works in plate degrees and mm.** KP is °/mm, so its real effect depends on `PULSE_PER_DEG` (servo side) and on `PLATE_W_MM`/`PLATE_H_MM` against the plate box in `vision/settings.json` (camera side). If either is off, the gains are off.
-- **Copies that must match `esp/esp.ino`:** `esp/esptest/esptest.ino` and `esp/espreset/espreset.ino` (pins, scale, window, centers). Update them in the same change.
+- **Copies that must match `esp/esp.ino`:** `esp/esptest/esptest.ino`, `esp/esptest2/esptest2.ino` and `esp/espreset/espreset.ino` (pins, scale, window, centers). Update them in the same change.
 
 ## Serial format (115200 baud, plain text)
 

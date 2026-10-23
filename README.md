@@ -115,6 +115,7 @@ esp/pid.ino          PID maths for one axis
 esp/plate.ino        tilt angle -> servo pulse
 esp/pid.h            the Axis and PID types
 esp/esptest/         servo test sketch: every extreme tilt, then flat, forever
+esp/esptest2/        servo test from the Serial Monitor: test X+ / X+Y- / stop / flat
 esp/espreset/        reset sketch: plate level, then stops
 esp/datalog.py       laptop: camera -> ESP32, save CSV, serve the dashboard
 esp/esp_usb.py       real ESP32 over USB

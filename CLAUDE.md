@@ -14,6 +14,7 @@ A two-axis ball-on-plate rig for Control Lab Task 4. A webcam finds the ball, th
 |---|---|---|
 | `esp/esp.ino`, `pid.ino`, `plate.ino`, `pid.h` | Main firmware: loop, `pos` command, PID, tilt to pulse | ESP32 (Arduino IDE, ESP32Servo library) |
 | `esp/esptest/esptest.ino` | Servo test: sweeps the 8 extreme directions, forever | ESP32 |
+| `esp/esptest2/esptest2.ino` | Servo test from the Serial Monitor: `test X+Y-` creeps slowly to that limit, `stop`, `flat` | ESP32 |
 | `esp/espreset/espreset.ino` | Sets both servos to the centre pulse once, prints it, then stops | ESP32 |
 | `esp/datalog.py`, `esp/esp_usb.py` | Camera to `pos` lines to ESP32, then CSV and a local web server | Laptop, Python 3 in `.venv` |
 | `vision/vision.py`, `vision/settings.json` | Ball detection, pixel to mm, plate box and threshold | Laptop, OpenCV |
@@ -40,8 +41,8 @@ The ESP32 prints one CSV line per control step: `t_ms,x_mm,y_mm,sp_x_mm,sp_y_mm,
 
 ## Rules for changes
 
-- These constants must match in `esp/esp.ino`, `esp/esptest/esptest.ino` and `esp/espreset/espreset.ino`: pins, `PULSE_CENTER_X/Y`, `SERVO_US_MIN/MAX`, `PULSE_MIN/MAX`, `PULSE_PER_DEG`, `SERVO_DIR_X/Y`. Change every copy in the same change.
-- Keep the timer setup identical in all three sketches: `ESP32PWM::allocateTimer`, `setPeriodHertz(50)`, `attach()`, then `setTimerWidth(16)`.
+- These constants must match in `esp/esp.ino`, `esp/esptest/esptest.ino`, `esp/esptest2/esptest2.ino` and `esp/espreset/espreset.ino`: pins, `PULSE_CENTER_X/Y`, `SERVO_US_MIN/MAX`, `PULSE_MIN/MAX`, `PULSE_PER_DEG`, `SERVO_DIR_X/Y`. Change every copy in the same change.
+- Keep the timer setup identical in all four sketches: `ESP32PWM::allocateTimer`, `setPeriodHertz(50)`, `attach()`, then `setTimerWidth(16)`.
 - `setTiltLimits()` is the only place that computes `pid.x/y.tiltMin/tiltMax`. Never hard-code a tilt limit.
 - `PLATE_HALF_MM` in the dashboard must equal half of `PLATE_W_MM` / `PLATE_H_MM` in `vision/vision.py`; change them together.
 - `hold()` must level the plate, reset both PID axes and set `lastControlMs = 0`, so no old speed or integral survives a gap.
@@ -70,9 +71,8 @@ Confirmed from the code and the logs. Details and evidence: `analysis/2026-10-22
 2. The plate size is nominal 250 × 250 mm. The saved plate box is 236 × 183 px, so the scale differs per axis (about 1.06 mm/px in x, 1.37 mm/px in y).
 3. The derivative amplifies camera pixel steps. At 24 fps, one pixel is about 30 to 40 mm/s of apparent speed, which is 0.6 to 0.8° of noise per frame at `KD = 0.02`.
 4. `SERVO_US_MAX = 2500` is above the MG90S spec of 2400 µs.
-5. `esptest.ino` names directions by pulse, not by tilt. Its "right" sends `PULSE_MAX`, which tilts toward −x when `SERVO_DIR_X = -1`.
-6. The setpoint is fixed at (0,0), so the Runs page step table stays empty for new runs (it needs a setpoint change). Use the position chart for the release test.
-7. No automated test covers the PID, the tilt mapping or the serial parser.
+5. The setpoint is fixed at (0,0), so the Runs page step table stays empty for new runs (it needs a setpoint change). Use the position chart for the release test.
+6. No automated test covers the PID, the tilt mapping or the serial parser.
 
 ## Report format (for analysis)
 

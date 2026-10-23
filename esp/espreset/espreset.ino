@@ -15,7 +15,7 @@ const int SERVO_Y_PIN = 4;
 // The servo's own pulse scale (its full travel). Only for attach(); the limits
 // below are ours and narrower.
 const int SERVO_US_MIN = 500;
-const int SERVO_US_MAX = 2500;
+const int SERVO_US_MAX = 2400;
 
 // Pulse width (microseconds) that makes the plate level on this rig, per axis.
 const int PULSE_CENTER_X = 1400;
